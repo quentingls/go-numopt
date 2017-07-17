@@ -2,7 +2,6 @@ package newton
 
 import (
 	"errors"
-	_ "fmt"
 	"gonum.org/v1/gonum/mat"
 )
 

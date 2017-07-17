@@ -1,7 +1,6 @@
 package newton
 
 import (
-	_ "fmt"
 	"gonum.org/v1/gonum/mat"
 	"testing"
 )
@@ -41,9 +40,12 @@ func TestNewtonRaphson(t *testing.T) {
 		Epsilon: 0.01,
 		N:       100,
 	}
-	res, err := NewtonRaphsonOptimise(function{}, param)
+	f := function{}
+	res, err := NewtonRaphsonOptimise(f, param)
 	if err != nil {
 		t.Errorf("should have nil error, having: %s", err.Error())
 	}
-	t.Errorf("having res: %v", res)
+	if f.ValueAt(res) >= param.Epsilon {
+		t.Errorf("iteration does not match accuracy requirement")
+	}
 }
