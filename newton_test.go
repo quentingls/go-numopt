@@ -1,4 +1,4 @@
-package newton
+package numopt
 
 import (
 	"gonum.org/v1/gonum/mat"
@@ -34,18 +34,18 @@ func (f function) HenssianAt(x *mat.Vector) *mat.Dense {
 
 func TestNewtonRaphson(t *testing.T) {
 	x0Value := []float64{1, 1}
-	param := OptimisationParameters{
+	param := NewtonRaphsonOptions{
 		X0:      mat.NewVector(2, x0Value),
 		Alpha:   0.01,
 		Epsilon: 0.01,
 		N:       100,
+		F:       function{},
 	}
-	f := function{}
-	res, err := NewtonRaphsonOptimise(f, param)
+	res, err := NewtonRaphsonOptimise(param)
 	if err != nil {
 		t.Errorf("should have nil error, having: %s", err.Error())
 	}
-	if f.ValueAt(res) >= param.Epsilon {
+	if param.F.ValueAt(res) >= param.Epsilon {
 		t.Errorf("iteration does not match accuracy requirement")
 	}
 }
