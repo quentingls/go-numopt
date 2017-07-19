@@ -20,10 +20,61 @@ type TwiceDifferenciableFunction interface {
 	HenssianAt(x *mat.Vector) mat.Matrix
 }
 
-// QuasiNewtonApproximation allows for updating invert henssian
+// NewtonQuasiUpdate allows for updating invert henssian
 // by approxiation.
-type QuasiNewtonApproximation interface {
-	UpdateHenssian(henssian mat.Matrix, deltaGrad *mat.Vector, deltaX *mat.Vector) mat.Matrix
+type NewtonQuasiUpdate func(henssian mat.Matrix, deltaGrad *mat.Vector, deltaX *mat.Vector) mat.Matrix
+
+// QuasiNewtonOptions contains the parameters defining the behaviour of the
+// optimisation iteration. X0 is the starting point, H0 is the approximation
+// of inverse of the henssian at X0, Alpha is the learning rate,
+// Epsilon the targeted accuracy, N the maximum iteration
+// and F the differenciable function.
+type QuasiNewtonOptions struct {
+	X0          *mat.Vector
+	H0          mat.Matrix
+	Alpha       float64
+	Epsilon     float64
+	N           int
+	F           DifferenciableFuntion
+	QuasiUpdate NewtonQuasiUpdate
+}
+
+// QuasiNewtonOptimise implements the quasi newton methond. Here we avoid
+// computing the invert of the henssian by using an approximation.
+func QuasiNewtonOptimise(opt QuasiNewtonOptions) (*mat.Vector, error) {
+	x, invertHenssian := opt.X0, opt.H0
+	valueAtX, valueAtNextX := opt.F.ValueAt(x), 0.0
+	delta := 0.0
+	dim, _ := x.Dims()
+	direction := mat.NewVector(dim, nil)
+	nextX, nextGradient := mat.NewVector(dim, nil), mat.NewVector(dim, nil)
+	deltaX, deltaGradient := mat.NewVector(dim, nil), mat.NewVector(dim, nil)
+	for i := 0; i < opt.N; i++ {
+		gradient := opt.F.GradientAt(x)
+		updateDirection(
+			direction,
+			invertHenssian,
+			gradient,
+			opt.Alpha,
+		)
+		nextX.SubVec(x, direction)
+		valueAtNextX = opt.F.ValueAt(nextX)
+		delta = (valueAtX - valueAtNextX) / valueAtNextX
+		if math.Abs(delta) < opt.Epsilon {
+			return nextX, nil
+		}
+		nextGradient = opt.F.GradientAt(x)
+		deltaX.SubVec(nextX, x)
+		deltaGradient.SubVec(nextGradient, gradient)
+		invertHenssian = opt.QuasiUpdate(
+			invertHenssian,
+			deltaGradient,
+			deltaX,
+		)
+		x = nextX
+		valueAtX = valueAtNextX
+	}
+	return x, errors.New("maximum number of iteraton has been reached")
 }
 
 // NewtonRaphsonOptions contains the parameters defining the behaviour of the
@@ -56,65 +107,11 @@ func NewtonRaphsonOptimise(opt NewtonRaphsonOptions) (*mat.Vector, error) {
 			opt.Alpha,
 		)
 		x.SubVec(x, direction)
-		//TODO Comprare relative difference
 		valueAtNextX = opt.F.ValueAt(x)
 		delta = (valueAtX - valueAtNextX) / valueAtNextX
 		if math.Abs(delta) < opt.Epsilon {
 			return x, nil
 		}
-		valueAtX = valueAtNextX
-	}
-	return x, errors.New("maximum number of iteraton has been reached")
-}
-
-// QuasiNewtonOptions contains the parameters defining the behaviour of the
-// optimisation iteration. X0 is the starting point, H0 is the approximation
-// of inverse of the henssian at X0, Alpha is the learning rate,
-// Epsilon the targeted accuracy, N the maximum iteration
-// and F the differenciable function.
-type QuasiNewtonOptions struct {
-	X0            *mat.Vector
-	H0            mat.Matrix
-	Alpha         float64
-	Epsilon       float64
-	N             int
-	F             DifferenciableFuntion
-	Approximation QuasiNewtonApproximation
-}
-
-// QuasiNewtonOptimise implements the quasi newton methond. Here we avoid
-// computing the invert of the henssian by using an approximation.
-func QuasiNewtonOptimise(opt QuasiNewtonOptions) (*mat.Vector, error) {
-	x, invertHenssian := opt.X0, opt.H0
-	valueAtX, valueAtNextX := opt.F.ValueAt(x), 0.0
-	delta := 0.0
-	dim, _ := x.Dims()
-	direction := mat.NewVector(dim, nil)
-	nextX, nextGradient := mat.NewVector(dim, nil), mat.NewVector(dim, nil)
-	deltaX, deltaGradient := mat.NewVector(dim, nil), mat.NewVector(dim, nil)
-	for i := 0; i < opt.N; i++ {
-		gradient := opt.F.GradientAt(x)
-		updateDirection(
-			direction,
-			invertHenssian,
-			gradient,
-			opt.Alpha,
-		)
-		nextX.SubVec(x, direction)
-		valueAtNextX = opt.F.ValueAt(nextX)
-		delta = (valueAtX - valueAtNextX) / valueAtNextX
-		if math.Abs(delta) < opt.Epsilon {
-			return nextX, nil
-		}
-		nextGradient = opt.F.GradientAt(x)
-		deltaX.SubVec(nextX, x)
-		deltaGradient.SubVec(nextGradient, gradient)
-		invertHenssian = opt.Approximation.UpdateHenssian(
-			invertHenssian,
-			deltaGradient,
-			deltaX,
-		)
-		x = nextX
 		valueAtX = valueAtNextX
 	}
 	return x, errors.New("maximum number of iteraton has been reached")

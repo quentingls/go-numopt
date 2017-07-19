@@ -4,7 +4,10 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-//
+// GradientDescentOption defines the optimizaion behaviour
+// X0 is the starting point, Alpha the learning rate,
+// Epsilon is the accuracy, N the maximum iteration and
+// F a single differenciable function.
 type GradientDescentOption struct {
 	X0      *mat.Vector
 	Alpha   float64
@@ -18,34 +21,31 @@ type GradientDescentOption struct {
 // always setting it to the identity matrix.
 func GradientDescentOptimise(opt GradientDescentOption) (*mat.Vector, error) {
 	dim, _ := opt.X0.Dims()
-	approx := newIdentityApproximation(dim)
+	update := identityUpdate(dim)
 	quasiNewtonOpts := QuasiNewtonOptions{
-		X0:            opt.X0,
-		Alpha:         opt.Alpha,
-		Epsilon:       opt.Epsilon,
-		N:             opt.N,
-		F:             opt.F,
-		Approximation: approx,
-		H0:            approx.identity,
+		X0:          opt.X0,
+		Alpha:       opt.Alpha,
+		Epsilon:     opt.Epsilon,
+		N:           opt.N,
+		F:           opt.F,
+		QuasiUpdate: update,
+		H0:          identity(dim),
 	}
 	return QuasiNewtonOptimise(quasiNewtonOpts)
 }
 
-type identityApproximation struct {
-	identity *mat.SymBandDense
+func identityUpdate(dim int) NewtonQuasiUpdate {
+	id := identity(dim)
+	return func(henssian mat.Matrix, deltaGrad *mat.Vector, deltaX *mat.Vector) mat.Matrix {
+		return id
+	}
 }
 
-func newIdentityApproximation(dim int) *identityApproximation {
+func identity(dim int) mat.Matrix {
 	values := make([]float64, dim)
 	for i := 0; i < dim; i++ {
 		values[i] = 1
 	}
 	identity := mat.NewDiagonal(dim, values)
-	return &identityApproximation{
-		identity,
-	}
-}
-
-func (approx *identityApproximation) UpdateHenssian(henssian mat.Matrix, deltaGrad *mat.Vector, deltaX *mat.Vector) mat.Matrix {
-	return approx.identity
+	return identity
 }

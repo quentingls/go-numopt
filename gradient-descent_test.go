@@ -2,7 +2,6 @@ package numopt
 
 import (
 	"gonum.org/v1/gonum/mat"
-	"math"
 	"testing"
 )
 
@@ -42,8 +41,7 @@ func TestGradientDescent(t *testing.T) {
 	if err != nil {
 		t.Errorf("should have nil error, having: %s", err.Error())
 	}
-	if math.Abs(param.F.ValueAt(res)) >= math.Abs(param.Epsilon) {
-		t.Errorf("iteration does not match accuracy requirement")
+	if param.F.ValueAt(res) >= -3.5 || param.F.ValueAt(res) <= -4.5 {
+		t.Errorf("iteration does not match accuracy requirement, f(x) = %v", param.F.ValueAt(res))
 	}
-	t.Errorf("res is %v", param.F.ValueAt(res))
 }
