@@ -42,6 +42,8 @@ type NewtonRaphsonOptions struct {
 // on the twice-differentiale function f.
 func NewtonRaphsonOptimise(opt NewtonRaphsonOptions) (*mat.Vector, error) {
 	x := opt.X0
+	valueAtX, valueAtNextX := opt.F.ValueAt(x), 0.0
+	delta := 0.0
 	dim, _ := x.Dims()
 	direction := mat.NewVector(dim, nil)
 	invertHenssian := mat.NewDense(dim, dim, nil)
@@ -54,9 +56,13 @@ func NewtonRaphsonOptimise(opt NewtonRaphsonOptions) (*mat.Vector, error) {
 			opt.Alpha,
 		)
 		x.SubVec(x, direction)
-		if math.Abs(opt.F.ValueAt(x)) < opt.Epsilon {
+		//TODO Comprare relative difference
+		valueAtNextX = opt.F.ValueAt(x)
+		delta = (valueAtX - valueAtNextX) / valueAtNextX
+		if math.Abs(delta) < opt.Epsilon {
 			return x, nil
 		}
+		valueAtX = valueAtNextX
 	}
 	return x, errors.New("maximum number of iteraton has been reached")
 }
@@ -80,6 +86,8 @@ type QuasiNewtonOptions struct {
 // computing the invert of the henssian by using an approximation.
 func QuasiNewtonOptimise(opt QuasiNewtonOptions) (*mat.Vector, error) {
 	x, invertHenssian := opt.X0, opt.H0
+	valueAtX, valueAtNextX := opt.F.ValueAt(x), 0.0
+	delta := 0.0
 	dim, _ := x.Dims()
 	direction := mat.NewVector(dim, nil)
 	nextX, nextGradient := mat.NewVector(dim, nil), mat.NewVector(dim, nil)
@@ -93,7 +101,9 @@ func QuasiNewtonOptimise(opt QuasiNewtonOptions) (*mat.Vector, error) {
 			opt.Alpha,
 		)
 		nextX.SubVec(x, direction)
-		if math.Abs(opt.F.ValueAt(nextX)) < opt.Epsilon {
+		valueAtNextX = opt.F.ValueAt(nextX)
+		delta = (valueAtX - valueAtNextX) / valueAtNextX
+		if math.Abs(delta) < opt.Epsilon {
 			return nextX, nil
 		}
 		nextGradient = opt.F.GradientAt(x)
@@ -105,6 +115,7 @@ func QuasiNewtonOptimise(opt QuasiNewtonOptions) (*mat.Vector, error) {
 			deltaX,
 		)
 		x = nextX
+		valueAtX = valueAtNextX
 	}
 	return x, errors.New("maximum number of iteraton has been reached")
 }

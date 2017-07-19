@@ -10,7 +10,7 @@ import (
 // grad(f)(x,y) = 2*x
 func (f function2) ValueAt(x *mat.Vector) float64 {
 	x1, x2 := x.At(0, 0), x.At(1, 0)
-	return x1*x1 + x2*x2
+	return x1*x1 + x2*x2 - 4
 }
 
 func (f function2) GradientAt(x *mat.Vector) *mat.Vector {
@@ -30,12 +30,12 @@ func (f function2) HenssianAt(x *mat.Vector) mat.Matrix {
 type function2 struct{}
 
 func TestGradientDescent(t *testing.T) {
-	x0Value := []float64{10, 10}
+	x0Value := []float64{-55, 10}
 	param := GradientDescentOption{
 		X0:      mat.NewVector(2, x0Value),
 		Alpha:   0.1,
-		Epsilon: 0.01,
-		N:       100,
+		Epsilon: 0.0001,
+		N:       1000,
 		F:       function2{},
 	}
 	res, err := GradientDescentOptimise(param)
@@ -45,4 +45,5 @@ func TestGradientDescent(t *testing.T) {
 	if math.Abs(param.F.ValueAt(res)) >= math.Abs(param.Epsilon) {
 		t.Errorf("iteration does not match accuracy requirement")
 	}
+	t.Errorf("res is %v", param.F.ValueAt(res))
 }

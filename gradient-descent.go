@@ -4,6 +4,7 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
+//
 type GradientDescentOption struct {
 	X0      *mat.Vector
 	Alpha   float64
@@ -12,6 +13,9 @@ type GradientDescentOption struct {
 	F       DifferenciableFuntion
 }
 
+// GradientDescentOptimise finds the roots using the quasi newton
+// approximation cancelling the effect of the invert Henssian by
+// always setting it to the identity matrix.
 func GradientDescentOptimise(opt GradientDescentOption) (*mat.Vector, error) {
 	dim, _ := opt.X0.Dims()
 	approx := newIdentityApproximation(dim)
