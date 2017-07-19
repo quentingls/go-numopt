@@ -3,6 +3,7 @@ package numopt
 import (
 	"errors"
 	"gonum.org/v1/gonum/mat"
+	"math"
 )
 
 // DifferenciableFuntion represents a differenciable
@@ -16,11 +17,13 @@ type DifferenciableFuntion interface {
 // function.
 type TwiceDifferenciableFunction interface {
 	DifferenciableFuntion
-	HenssianAt(x *mat.Vector) *mat.Dense
+	HenssianAt(x *mat.Vector) mat.Matrix
 }
 
+// QuasiNewtonApproximation allows for updating invert henssian
+// by approxiation.
 type QuasiNewtonApproximation interface {
-	UpdateHenssian(henssian *mat.Dense, deltaGrad *mat.Vector, deltaX *mat.Vector)
+	UpdateHenssian(henssian mat.Matrix, deltaGrad *mat.Vector, deltaX *mat.Vector) mat.Matrix
 }
 
 // NewtonRaphsonOptions contains the parameters defining the behaviour of the
@@ -41,19 +44,17 @@ func NewtonRaphsonOptimise(opt NewtonRaphsonOptions) (*mat.Vector, error) {
 	x := opt.X0
 	dim, _ := x.Dims()
 	direction := mat.NewVector(dim, nil)
+	invertHenssian := mat.NewDense(dim, dim, nil)
 	for i := 0; i < opt.N; i++ {
-		henssian, gradient := opt.F.HenssianAt(x), opt.F.GradientAt(x)
-		r, _ := henssian.Dims()
-		invertHenssian := mat.NewDense(r, r, nil)
-		invertHenssian.Inverse(henssian)
+		invertHenssian.Inverse(opt.F.HenssianAt(x))
 		updateDirection(
 			direction,
 			invertHenssian,
-			gradient,
+			opt.F.GradientAt(x),
 			opt.Alpha,
 		)
 		x.SubVec(x, direction)
-		if opt.F.ValueAt(x) < opt.Epsilon {
+		if math.Abs(opt.F.ValueAt(x)) < opt.Epsilon {
 			return x, nil
 		}
 	}
@@ -67,7 +68,7 @@ func NewtonRaphsonOptimise(opt NewtonRaphsonOptions) (*mat.Vector, error) {
 // and F the differenciable function.
 type QuasiNewtonOptions struct {
 	X0            *mat.Vector
-	H0            *mat.Dense
+	H0            mat.Matrix
 	Alpha         float64
 	Epsilon       float64
 	N             int
@@ -92,28 +93,29 @@ func QuasiNewtonOptimise(opt QuasiNewtonOptions) (*mat.Vector, error) {
 			opt.Alpha,
 		)
 		nextX.SubVec(x, direction)
-		if opt.F.ValueAt(nextX) < opt.Epsilon {
-			return nextGradient, nil
+		if math.Abs(opt.F.ValueAt(nextX)) < opt.Epsilon {
+			return nextX, nil
 		}
 		nextGradient = opt.F.GradientAt(x)
 		deltaX.SubVec(nextX, x)
 		deltaGradient.SubVec(nextGradient, gradient)
-		opt.Approximation.UpdateHenssian(
+		invertHenssian = opt.Approximation.UpdateHenssian(
 			invertHenssian,
 			deltaGradient,
 			deltaX,
 		)
+		x = nextX
 	}
-	return nextX, errors.New("maximum number of iteraton has been reached")
+	return x, errors.New("maximum number of iteraton has been reached")
 }
 
 // Calculates the iteration direction.
-func updateDirection(dir *mat.Vector, invertHenssian *mat.Dense, gradient *mat.Vector, alpha float64) {
+func updateDirection(dir *mat.Vector, invertHenssian mat.Matrix, gradient *mat.Vector, alpha float64) {
 	r, _ := invertHenssian.Dims()
 	prod := mat.NewDense(r, 1, nil)
 	prod.Mul(invertHenssian, gradient)
 	*dir = *prod.ColView(0)
-	dir.ScaleVec(-alpha, dir)
+	dir.ScaleVec(alpha, dir)
 }
 
 type BacktrackingOption struct {

@@ -6,26 +6,20 @@ import (
 	"testing"
 )
 
-type function struct {
-}
-
-// f(x, y) = x (2x - y) + 2y
-// grad(f)(x,y) = [4x - y, -x + 2]
-// henssian(f) (x,y) = |4,-1|
-// 					   |-1,0|
-
-func (f function) ValueAt(x *mat.Vector) float64 {
+// f(x, y) = x*x - 4
+// grad(f)(x,y) = 2*x
+func (f function2) ValueAt(x *mat.Vector) float64 {
 	x1, x2 := x.At(0, 0), x.At(1, 0)
 	return x1*x1 + x2*x2
 }
 
-func (f function) GradientAt(x *mat.Vector) *mat.Vector {
+func (f function2) GradientAt(x *mat.Vector) *mat.Vector {
 	x1, x2 := x.At(0, 0), x.At(1, 0)
 	value := []float64{2 * x1, 2 * x2}
 	return mat.NewVector(2, value)
 }
 
-func (f function) HenssianAt(x *mat.Vector) mat.Matrix {
+func (f function2) HenssianAt(x *mat.Vector) mat.Matrix {
 	value := []float64{
 		2, 0,
 		0, 2,
@@ -33,16 +27,18 @@ func (f function) HenssianAt(x *mat.Vector) mat.Matrix {
 	return mat.NewDense(2, 2, value)
 }
 
-func TestNewtonRaphson(t *testing.T) {
+type function2 struct{}
+
+func TestGradientDescent(t *testing.T) {
 	x0Value := []float64{10, 10}
-	param := NewtonRaphsonOptions{
+	param := GradientDescentOption{
 		X0:      mat.NewVector(2, x0Value),
 		Alpha:   0.1,
 		Epsilon: 0.01,
-		N:       10000,
-		F:       function{},
+		N:       100,
+		F:       function2{},
 	}
-	res, err := NewtonRaphsonOptimise(param)
+	res, err := GradientDescentOptimise(param)
 	if err != nil {
 		t.Errorf("should have nil error, having: %s", err.Error())
 	}
