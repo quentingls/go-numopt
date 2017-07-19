@@ -16,7 +16,7 @@ type GradientDescentOption struct {
 	F       DifferenciableFuntion
 }
 
-// GradientDescentOptimise finds the roots using the quasi newton
+// GradientDescentOptimise uses the quasi newton
 // approximation cancelling the effect of the invert Henssian by
 // always setting it to the identity matrix.
 func GradientDescentOptimise(opt GradientDescentOption) (*mat.Vector, error) {
